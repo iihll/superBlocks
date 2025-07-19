@@ -6,6 +6,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <!-- 引入 Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./iconfont.js"></script>
+  <style>
+.icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  fill: currentColor;
+  overflow: hidden;
+}
+</style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center">
   <div id="container" class="flex flex-col items-center w-full max-w-md mx-auto">
@@ -19,8 +29,23 @@
   <script>
     const SIZE = 9, BLOCK_TYPES = 7;
     const COLORS = ["#e74c3c","#3498db","#f1c40f","#2ecc71","#9b59b6","#e67e22","#1abc9c"];
+    const IMG_PATHS = [
+      "img/yang.png",
+      "img/lanmao.png",
+      "img/sanhuamao.png",
+      "img/hashiqi.png",
+      "img/helanzhu.png",
+      "img/jinmao.png",
+      "img/cangshu.png"
+    ];
+    const IMAGES = IMG_PATHS.map(src => {
+      const img = new Image();
+      img.src = src;
+      return img;
+    });
     let board = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
     let selected = null, gameOver = false;
+    let score = 0;
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     let cellSize = canvas.width / SIZE;
@@ -56,24 +81,37 @@
           ctx.lineWidth = 1;
           ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
           if (board[r][c] !== null) {
-            ctx.beginPath();
-            ctx.arc(
-              c * cellSize + cellSize / 2,
-              r * cellSize + cellSize / 2,
-              cellSize * 0.38,
-              0, 2 * Math.PI
+            let img = IMAGES[board[r][c]];
+            ctx.drawImage(
+              img,
+              c * cellSize + cellSize * 0.1,
+              r * cellSize + cellSize * 0.1,
+              cellSize * 0.8,
+              cellSize * 0.8
             );
-            ctx.fillStyle = COLORS[board[r][c]];
-            ctx.fill();
             if (selected && selected[0] === r && selected[1] === c) {
               ctx.lineWidth = 4;
               ctx.strokeStyle = "#333";
-              ctx.stroke();
+              ctx.strokeRect(
+                c * cellSize + cellSize * 0.1,
+                r * cellSize + cellSize * 0.1,
+                cellSize * 0.8,
+                cellSize * 0.8
+              );
             }
           }
         }
       }
       document.getElementById('status').textContent = gameOver ? '游戏结束！' : '';
+      // 显示分数
+      let scoreDiv = document.getElementById('score');
+      if (!scoreDiv) {
+        scoreDiv = document.createElement('div');
+        scoreDiv.id = 'score';
+        scoreDiv.className = 'mb-2 text-lg text-green-600';
+        document.getElementById('container').insertBefore(scoreDiv, document.getElementById('status'));
+      }
+      scoreDiv.textContent = `分数：${score}`;
     }
 
     function bfsPath(from, to) {
@@ -131,10 +169,12 @@
     function checkAndRemoveLines() {
       let removed = false;
       let toRemove = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+      let lines = [];
       function markLine(line) {
         if (line.length >= 5) {
           line.forEach(([r, c]) => toRemove[r][c] = true);
           removed = true;
+          lines.push(line.length);
         }
       }
       for (let r = 0; r < SIZE; r++) {
@@ -158,6 +198,12 @@
       for (let r = 0; r < SIZE; r++)
         for (let c = 0; c < SIZE; c++)
           if (toRemove[r][c]) board[r][c] = null;
+      // 计分
+      lines.forEach(len => {
+        if (len >= 5) {
+          score += 50 + (len - 5) * 10;
+        }
+      });
       return removed;
     }
 
@@ -199,25 +245,29 @@
             ctx.lineWidth = 1;
             ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
             if (board[r][c] !== null && !(r === from[0] && c === from[1])) {
-              ctx.beginPath();
-              ctx.arc(
-                c * cellSize + cellSize / 2,
-                r * cellSize + cellSize / 2,
-                cellSize * 0.38,
-                0, 2 * Math.PI
+              // 绘制图片
+              let img = IMAGES[board[r][c]];
+              ctx.drawImage(
+                img,
+                c * cellSize + cellSize * 0.1,
+                r * cellSize + cellSize * 0.1,
+                cellSize * 0.8,
+                cellSize * 0.8
               );
-              ctx.fillStyle = COLORS[board[r][c]];
-              ctx.fill();
             }
           }
         }
         // Draw moving block
         let x = from[1] * cellSize + cellSize / 2 + (to[1] - from[1]) * cellSize * t;
         let y = from[0] * cellSize + cellSize / 2 + (to[0] - from[0]) * cellSize * t;
-        ctx.beginPath();
-        ctx.arc(x, y, cellSize * 0.38, 0, 2 * Math.PI);
-        ctx.fillStyle = COLORS[type];
-        ctx.fill();
+        ctx.drawImage(
+          IMAGES[type],
+          x - cellSize * 0.4,
+          y - cellSize * 0.4,
+          cellSize * 0.8,
+          cellSize * 0.8
+        );
+
         if (t < 1) {
           animation = requestAnimationFrame(drawFrame);
         } else {
@@ -251,15 +301,15 @@
             ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
             // 不画正在移动的格子
             if (board[r][c] !== null && !(r === path[segment][0] && c === path[segment][1])) {
-              ctx.beginPath();
-              ctx.arc(
-                c * cellSize + cellSize / 2,
-                r * cellSize + cellSize / 2,
-                cellSize * 0.38,
-                0, 2 * Math.PI
+              // 绘制图片
+              let img = IMAGES[board[r][c]];
+              ctx.drawImage(
+                img,
+                c * cellSize + cellSize * 0.1,
+                r * cellSize + cellSize * 0.1,
+                cellSize * 0.8,
+                cellSize * 0.8
               );
-              ctx.fillStyle = COLORS[board[r][c]];
-              ctx.fill();
             }
           }
         }
@@ -274,10 +324,13 @@
         // 插值位置
         let x = (c1 + dx * t) * cellSize + cellSize / 2;
         let y = (r1 + dy * t) * cellSize + cellSize / 2;
-        ctx.beginPath();
-        ctx.arc(x, y, cellSize * 0.38, 0, 2 * Math.PI);
-        ctx.fillStyle = COLORS[type];
-        ctx.fill();
+        ctx.drawImage(
+          IMAGES[type],
+          x - cellSize * 0.4,
+          y - cellSize * 0.4,
+          cellSize * 0.8,
+          cellSize * 0.8
+        );
 
         progress += speed;
         if (progress >= cellSize * dist) {
@@ -337,6 +390,7 @@
       board = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
       selected = null;
       gameOver = false;
+      score = 0; // 重置分数
       addRandomBlocks(5);
       render();
     }
