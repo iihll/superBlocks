@@ -1,113 +1,350 @@
 <!DOCTYPE html>
 <html lang="zh">
-  <head>
-    <meta charset="UTF-8" />
-    <title>超级方块游戏</title>
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
-    />
-    <!-- 引入 Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="./iconfont.js"></script>
-    <style>
-      .icon {
-        width: 1em;
-        height: 1em;
-        vertical-align: -0.15em;
-        fill: currentColor;
-        overflow: hidden;
-      }
-    </style>
-  </head>
-  <body
-    class="bg-gray-100 min-h-screen flex flex-col items-center justify-center"
-  >
-    <div
-      id="container"
-      class="flex flex-col items-center w-full max-w-md mx-auto"
-    >
-      <h2 class="text-2xl font-bold mt-6 mb-2 text-blue-600">超级方块游戏</h2>
-      <div id="status" class="mb-2 text-lg text-red-500"></div>
-      <button
-        id="restart"
-        class="mb-4 px-6 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition"
-      >
-        重新开始
-      </button>
-      <div class="shadow-lg bg-gray-200 p-2">
-        <canvas id="game" width="360" height="360" class="bg-gray-300"></canvas>
-      </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>超级方块游戏</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <!-- 引入 Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./iconfont.js"></script>
+  <style>
+    .icon {
+      width: 1em;
+      height: 1em;
+      vertical-align: -0.15em;
+      fill: currentColor;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center">
+  <div id="container" class="flex flex-col items-center w-full max-w-md mx-auto">
+    <!-- <h2 class="text-2xl font-bold mt-6 mb-2 text-blue-600">超级方块游戏</h2> -->
+    <div id="status" class="mb-2 text-lg text-red-500"></div>
+    <button id="restart" class="mb-4 px-6 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition">
+      重新开始
+    </button>
+    <div class="shadow-lg bg-gray-200 p-2">
+      <canvas id="game" width="360" height="360"></canvas>
     </div>
-    <script>
-      const SIZE = 9,
-        BLOCK_TYPES = 7;
-      const SVG_PATHS = [
-        "yang",
-        "lanmao",
-        "sanhuamao",
-        "hashiqi",
-        "helanzhu",
-        "jinmao",
-        "cangshu",
-      ];
-      const IMG_PATHS = [
-        "img/yang.png",
-        "img/lanmao.png",
-        "img/sanhuamao.png",
-        "img/hashiqi.png",
-        "img/helanzhu.png",
-        "img/jinmao.png",
-        "img/cangshu.png",
-      ];
-      const IMAGES = IMG_PATHS.map((src) => {
-        const img = new Image();
-        img.src = src;
-        return img;
+  </div>
+  <script>
+    const SIZE = 9,
+      BLOCK_TYPES = 7;
+    const SVG_PATHS = [
+      "yang",
+      "lanmao",
+      "sanhuamao",
+      "hashiqi",
+      "helanzhu",
+      "jinmao",
+      "cangshu",
+    ];
+    const IMG_PATHS = [
+      "img/yang.png",
+      "img/lanmao.png",
+      "img/sanhuamao.png",
+      "img/hashiqi.png",
+      "img/helanzhu.png",
+      "img/jinmao.png",
+      "img/cangshu.png",
+    ];
+    const IMAGES = IMG_PATHS.map((src) => {
+      const img = new Image();
+      img.src = src;
+      return img;
+    });
+    let board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+    let selected = null,
+      gameOver = false;
+    let score = 0;
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    let cellSize = canvas.width / SIZE;
+
+    function resizeCanvas() {
+      // 取屏幕宽度和高度的最大可用值（减去一些边距）
+      let w = window.innerWidth * 0.9;
+      let h = window.innerHeight * 0.8;
+      let size = Math.min(w, h); // 取较小值，保证不会超出屏幕
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.height = size * dpr;
+      canvas.style.width = canvas.style.height = size + "px";
+      cellSize = size / SIZE;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      render();
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    function randomEmptyCells(n) {
+      let empties = [];
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+          if (board[r][c] === null) empties.push([r, c]);
+      return empties.sort(() => Math.random() - 0.5).slice(0, n);
+    }
+
+    function addRandomBlocks(n) {
+      let cells = randomEmptyCells(n);
+      cells.forEach(([r, c]) => {
+        board[r][c] = Math.floor(Math.random() * BLOCK_TYPES);
       });
-      let board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-      let selected = null,
-        gameOver = false;
-      let score = 0;
-      const canvas = document.getElementById("game");
-      const ctx = canvas.getContext("2d");
-      let cellSize = canvas.width / SIZE;
+    }
 
-      function resizeCanvas() {
-        let w = Math.min(window.innerWidth * 0.9, 400);
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvas.height = w * dpr; // 画布实际像素
-        canvas.style.width = canvas.style.height = w + "px"; // 显示尺寸
-        cellSize = w / SIZE; // 用显示尺寸计算格子大小
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置
-        ctx.scale(dpr, dpr); // 所有绘制都按显示尺寸
+    let blinkFrame = 0;
+    let blinking = false;
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          ctx.strokeStyle = "#bdbdbd";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          if (board[r][c] !== null) {
+            let img = IMAGES[board[r][c]];
+            if (selected && selected[0] === r && selected[1] === c) {
+              // 选中方块图标缩放闪烁
+              let scale = 0.85 + 0.15 * Math.sin(blinkFrame / 8); // 在0.85~1之间变化
+              ctx.save();
+              ctx.translate(
+                c * cellSize + cellSize / 2,
+                r * cellSize + cellSize / 2
+              );
+              ctx.scale(scale, scale);
+              ctx.drawImage(
+                img,
+                -cellSize * 0.4,
+                -cellSize * 0.4,
+                cellSize * 0.8,
+                cellSize * 0.8
+              );
+              ctx.restore();
+            } else {
+              // 普通方块正常显示
+              ctx.drawImage(
+                img,
+                c * cellSize + cellSize * 0.1,
+                r * cellSize + cellSize * 0.1,
+                cellSize * 0.8,
+                cellSize * 0.8
+              );
+            }
+          }
+        }
+      }
+      document.getElementById("status").textContent = gameOver
+        ? "游戏结束！"
+        : "";
+      // 显示分数
+      let scoreDiv = document.getElementById("score");
+      if (!scoreDiv) {
+        scoreDiv = document.createElement("div");
+        scoreDiv.id = "score";
+        scoreDiv.className = "mb-2 text-lg text-green-600";
+        document
+          .getElementById("container")
+          .insertBefore(scoreDiv, document.getElementById("status"));
+      }
+      scoreDiv.textContent = `分数：${score}`;
+    }
+
+    // 启动闪烁动画
+    function startBlink() {
+      if (blinking) return;
+      blinking = true;
+      function loop() {
+        blinkFrame++;
         render();
+        if (selected) {
+          requestAnimationFrame(loop);
+        } else {
+          blinking = false;
+        }
       }
-      window.addEventListener("resize", resizeCanvas);
+      loop();
+    }
 
-      function randomEmptyCells(n) {
-        let empties = [];
-        for (let r = 0; r < SIZE; r++)
-          for (let c = 0; c < SIZE; c++)
-            if (board[r][c] === null) empties.push([r, c]);
-        return empties.sort(() => Math.random() - 0.5).slice(0, n);
+    function bfsPath(from, to) {
+      let visited = Array.from({ length: SIZE }, () =>
+        Array(SIZE).fill(false)
+      );
+      let queue = [from];
+      visited[from[0]][from[1]] = true;
+      let dirs = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
+      ];
+      while (queue.length) {
+        let [r, c] = queue.shift();
+        if (r === to[0] && c === to[1]) return true;
+        for (let [dr, dc] of dirs) {
+          let nr = r + dr,
+            nc = c + dc;
+          if (
+            nr >= 0 &&
+            nr < SIZE &&
+            nc >= 0 &&
+            nc < SIZE &&
+            !visited[nr][nc] &&
+            board[nr][nc] === null
+          ) {
+            visited[nr][nc] = true;
+            queue.push([nr, nc]);
+          }
+        }
       }
+      return false;
+    }
 
-      function addRandomBlocks(n) {
-        let cells = randomEmptyCells(n);
-        cells.forEach(([r, c]) => {
-          board[r][c] = Math.floor(Math.random() * BLOCK_TYPES);
-        });
+    function findPath(from, to) {
+      // BFS 获取路径
+      let visited = Array.from({ length: SIZE }, () =>
+        Array(SIZE).fill(false)
+      );
+      let prev = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+      let queue = [from];
+      visited[from[0]][from[1]] = true;
+      let dirs = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
+      ];
+      while (queue.length) {
+        let [r, c] = queue.shift();
+        if (r === to[0] && c === to[1]) break;
+        for (let [dr, dc] of dirs) {
+          let nr = r + dr,
+            nc = c + dc;
+          if (
+            nr >= 0 &&
+            nr < SIZE &&
+            nc >= 0 &&
+            nc < SIZE &&
+            !visited[nr][nc] &&
+            board[nr][nc] === null
+          ) {
+            visited[nr][nc] = true;
+            prev[nr][nc] = [r, c];
+            queue.push([nr, nc]);
+          }
+        }
       }
+      // 回溯路径
+      let path = [];
+      let cur = to;
+      while (cur && !(cur[0] === from[0] && cur[1] === from[1])) {
+        path.push(cur);
+        cur = prev[cur[0]][cur[1]];
+      }
+      path.push(from);
+      path.reverse();
+      return path;
+    }
 
-      function render() {
+    function checkAndRemoveLines() {
+      let removed = false;
+      let toRemove = Array.from({ length: SIZE }, () =>
+        Array(SIZE).fill(false)
+      );
+      let lines = [];
+      function markLine(line) {
+        if (line.length >= 5) {
+          // 只在首次发现时 push
+          if (!line.some(([r, c]) => toRemove[r][c])) {
+            line.forEach(([r, c]) => (toRemove[r][c] = true));
+            removed = true;
+            lines.push(line.length);
+          }
+        }
+      }
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          let t = board[r][c];
+          if (t === null) continue;
+          let h = [[r, c]];
+          for (let k = 1; c + k < SIZE && board[r][c + k] === t; k++)
+            h.push([r, c + k]);
+          markLine(h);
+          let v = [[r, c]];
+          for (let k = 1; r + k < SIZE && board[r + k][c] === t; k++)
+            v.push([r + k, c]);
+          markLine(v);
+          let d1 = [[r, c]];
+          for (
+            let k = 1;
+            r + k < SIZE && c + k < SIZE && board[r + k][c + k] === t;
+            k++
+          )
+            d1.push([r + k, c + k]);
+          markLine(d1);
+          let d2 = [[r, c]];
+          for (
+            let k = 1;
+            r + k < SIZE && c - k >= 0 && board[r + k][c - k] === t;
+            k++
+          )
+            d2.push([r + k, c - k]);
+          markLine(d2);
+        }
+      }
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++) if (toRemove[r][c]) board[r][c] = null;
+      // 计分
+      lines.forEach((len) => {
+        if (len >= 5) {
+          score += 50 + (len - 5) * 10;
+        }
+      });
+      return removed;
+    }
+
+    function canMoveOrEliminate() {
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+          if (board[r][c] !== null) {
+            for (let rr = 0; rr < SIZE; rr++)
+              for (let cc = 0; cc < SIZE; cc++)
+                if (board[rr][cc] === null && bfsPath([r, c], [rr, cc]))
+                  return true;
+          }
+      return false;
+    }
+
+    function getCellFromXY(x, y) {
+      const rect = canvas.getBoundingClientRect();
+      let cx = x - rect.left;
+      let cy = y - rect.top;
+      let c = Math.floor(cx / cellSize);
+      let r = Math.floor(cy / cellSize);
+      if (r >= 0 && r < SIZE && c >= 0 && c < SIZE) return [r, c];
+      return null;
+    }
+
+    let animating = false;
+    let animation = null;
+
+    function animateMove(from, to, type, callback) {
+      animating = true;
+      const duration = 200; // ms
+      const startTime = performance.now();
+      function drawFrame(now) {
+        let t = Math.min((now - startTime) / duration, 1);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Draw board except moving block
         for (let r = 0; r < SIZE; r++) {
           for (let c = 0; c < SIZE; c++) {
-            ctx.strokeStyle = "#333";
+            ctx.strokeStyle = "#bdbdbd";
             ctx.lineWidth = 1;
             ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
-            if (board[r][c] !== null) {
+            if (board[r][c] !== null && !(r === from[0] && c === from[1])) {
+              // 绘制图片
               let img = IMAGES[board[r][c]];
               ctx.drawImage(
                 img,
@@ -116,386 +353,214 @@
                 cellSize * 0.8,
                 cellSize * 0.8
               );
-              if (selected && selected[0] === r && selected[1] === c) {
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = "red";
-                ctx.strokeRect(
-                  c * cellSize + cellSize * 0.1,
-                  r * cellSize + cellSize * 0.1,
-                  cellSize * 0.8,
-                  cellSize * 0.8
-                );
-              }
             }
           }
         }
-        document.getElementById("status").textContent = gameOver
-          ? "游戏结束！"
-          : "";
-        // 显示分数
-        let scoreDiv = document.getElementById("score");
-        if (!scoreDiv) {
-          scoreDiv = document.createElement("div");
-          scoreDiv.id = "score";
-          scoreDiv.className = "mb-2 text-lg text-green-600";
-          document
-            .getElementById("container")
-            .insertBefore(scoreDiv, document.getElementById("status"));
-        }
-        scoreDiv.textContent = `分数：${score}`;
-      }
-
-      function bfsPath(from, to) {
-        let visited = Array.from({ length: SIZE }, () =>
-          Array(SIZE).fill(false)
+        // Draw moving block
+        let x =
+          from[1] * cellSize +
+          cellSize / 2 +
+          (to[1] - from[1]) * cellSize * t;
+        let y =
+          from[0] * cellSize +
+          cellSize / 2 +
+          (to[0] - from[0]) * cellSize * t;
+        ctx.drawImage(
+          IMAGES[type],
+          x - cellSize * 0.4,
+          y - cellSize * 0.4,
+          cellSize * 0.8,
+          cellSize * 0.8
         );
-        let queue = [from];
-        visited[from[0]][from[1]] = true;
-        let dirs = [
-          [0, 1],
-          [1, 0],
-          [0, -1],
-          [-1, 0],
-        ];
-        while (queue.length) {
-          let [r, c] = queue.shift();
-          if (r === to[0] && c === to[1]) return true;
-          for (let [dr, dc] of dirs) {
-            let nr = r + dr,
-              nc = c + dc;
-            if (
-              nr >= 0 &&
-              nr < SIZE &&
-              nc >= 0 &&
-              nc < SIZE &&
-              !visited[nr][nc] &&
-              board[nr][nc] === null
-            ) {
-              visited[nr][nc] = true;
-              queue.push([nr, nc]);
-            }
-          }
-        }
-        return false;
-      }
 
-      function findPath(from, to) {
-        // BFS 获取路径
-        let visited = Array.from({ length: SIZE }, () =>
-          Array(SIZE).fill(false)
-        );
-        let prev = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-        let queue = [from];
-        visited[from[0]][from[1]] = true;
-        let dirs = [
-          [0, 1],
-          [1, 0],
-          [0, -1],
-          [-1, 0],
-        ];
-        while (queue.length) {
-          let [r, c] = queue.shift();
-          if (r === to[0] && c === to[1]) break;
-          for (let [dr, dc] of dirs) {
-            let nr = r + dr,
-              nc = c + dc;
-            if (
-              nr >= 0 &&
-              nr < SIZE &&
-              nc >= 0 &&
-              nc < SIZE &&
-              !visited[nr][nc] &&
-              board[nr][nc] === null
-            ) {
-              visited[nr][nc] = true;
-              prev[nr][nc] = [r, c];
-              queue.push([nr, nc]);
-            }
-          }
+        if (t < 1) {
+          animation = requestAnimationFrame(drawFrame);
+        } else {
+          animating = false;
+          animation = null;
+          callback();
         }
-        // 回溯路径
-        let path = [];
-        let cur = to;
-        while (cur && !(cur[0] === from[0] && cur[1] === from[1])) {
-          path.push(cur);
-          cur = prev[cur[0]][cur[1]];
-        }
-        path.push(from);
-        path.reverse();
-        return path;
       }
+      animation = requestAnimationFrame(drawFrame);
+    }
 
-      function checkAndRemoveLines() {
-        let removed = false;
-        let toRemove = Array.from({ length: SIZE }, () =>
-          Array(SIZE).fill(false)
-        );
-        let lines = [];
-        function markLine(line) {
-          if (line.length >= 5) {
-            // 只在首次发现时 push
-            if (!line.some(([r, c]) => toRemove[r][c])) {
-              line.forEach(([r, c]) => (toRemove[r][c] = true));
-              removed = true;
-              lines.push(line.length);
-            }
-          }
-        }
+    function animateMovePath(path, type, callback) {
+      animating = true;
+      const speed = 12; // 每帧移动的像素数，越大越快
+      let totalSteps = 0;
+      // 计算路径每段的像素距离
+      for (let i = 1; i < path.length; i++) {
+        totalSteps +=
+          Math.abs(path[i][0] - path[i - 1][0]) +
+          Math.abs(path[i][1] - path[i - 1][1]);
+      }
+      let current = 0;
+      let segment = 0;
+      let progress = 0;
+
+      function drawFrame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Draw board except moving block
         for (let r = 0; r < SIZE; r++) {
           for (let c = 0; c < SIZE; c++) {
-            let t = board[r][c];
-            if (t === null) continue;
-            let h = [[r, c]];
-            for (let k = 1; c + k < SIZE && board[r][c + k] === t; k++)
-              h.push([r, c + k]);
-            markLine(h);
-            let v = [[r, c]];
-            for (let k = 1; r + k < SIZE && board[r + k][c] === t; k++)
-              v.push([r + k, c]);
-            markLine(v);
-            let d1 = [[r, c]];
-            for (
-              let k = 1;
-              r + k < SIZE && c + k < SIZE && board[r + k][c + k] === t;
-              k++
-            )
-              d1.push([r + k, c + k]);
-            markLine(d1);
-            let d2 = [[r, c]];
-            for (
-              let k = 1;
-              r + k < SIZE && c - k >= 0 && board[r + k][c - k] === t;
-              k++
-            )
-              d2.push([r + k, c - k]);
-            markLine(d2);
-          }
-        }
-        for (let r = 0; r < SIZE; r++)
-          for (let c = 0; c < SIZE; c++) if (toRemove[r][c]) board[r][c] = null;
-        // 计分
-        lines.forEach((len) => {
-          if (len >= 5) {
-            score += 50 + (len - 5) * 10;
-          }
-        });
-        return removed;
-      }
-
-      function canMoveOrEliminate() {
-        for (let r = 0; r < SIZE; r++)
-          for (let c = 0; c < SIZE; c++)
-            if (board[r][c] !== null) {
-              for (let rr = 0; rr < SIZE; rr++)
-                for (let cc = 0; cc < SIZE; cc++)
-                  if (board[rr][cc] === null && bfsPath([r, c], [rr, cc]))
-                    return true;
-            }
-        return false;
-      }
-
-      function getCellFromXY(x, y) {
-        const rect = canvas.getBoundingClientRect();
-        let cx = x - rect.left;
-        let cy = y - rect.top;
-        let c = Math.floor(cx / cellSize);
-        let r = Math.floor(cy / cellSize);
-        if (r >= 0 && r < SIZE && c >= 0 && c < SIZE) return [r, c];
-        return null;
-      }
-
-      let animating = false;
-      let animation = null;
-
-      function animateMove(from, to, type, callback) {
-        animating = true;
-        const duration = 200; // ms
-        const startTime = performance.now();
-        function drawFrame(now) {
-          let t = Math.min((now - startTime) / duration, 1);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          // Draw board except moving block
-          for (let r = 0; r < SIZE; r++) {
-            for (let c = 0; c < SIZE; c++) {
-              ctx.strokeStyle = "#333";
-              ctx.lineWidth = 1;
-              ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
-              if (board[r][c] !== null && !(r === from[0] && c === from[1])) {
-                // 绘制图片
-                let img = IMAGES[board[r][c]];
-                ctx.drawImage(
-                  img,
-                  c * cellSize + cellSize * 0.1,
-                  r * cellSize + cellSize * 0.1,
-                  cellSize * 0.8,
-                  cellSize * 0.8
-                );
-              }
+            ctx.strokeStyle = "#bdbdbd";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            // 不画正在移动的格子
+            if (
+              board[r][c] !== null &&
+              !(r === path[segment][0] && c === path[segment][1])
+            ) {
+              // 绘制图片
+              let img = IMAGES[board[r][c]];
+              ctx.drawImage(
+                img,
+                c * cellSize + cellSize * 0.1,
+                r * cellSize + cellSize * 0.1,
+                cellSize * 0.8,
+                cellSize * 0.8
+              );
             }
           }
-          // Draw moving block
-          let x =
-            from[1] * cellSize +
-            cellSize / 2 +
-            (to[1] - from[1]) * cellSize * t;
-          let y =
-            from[0] * cellSize +
-            cellSize / 2 +
-            (to[0] - from[0]) * cellSize * t;
-          ctx.drawImage(
-            IMAGES[type],
-            x - cellSize * 0.4,
-            y - cellSize * 0.4,
-            cellSize * 0.8,
-            cellSize * 0.8
-          );
-
-          if (t < 1) {
-            animation = requestAnimationFrame(drawFrame);
-          } else {
-            animating = false;
-            animation = null;
-            callback();
-          }
         }
-        animation = requestAnimationFrame(drawFrame);
-      }
+        // 计算当前段的起止
+        let [r1, c1] = path[segment];
+        let [r2, c2] = path[segment + 1] || path[segment];
+        let dx = c2 - c1,
+          dy = r2 - r1;
+        let dist = Math.abs(dx) + Math.abs(dy);
+        if (dist === 0) dist = 1;
+        let t = progress / (cellSize * dist);
+        if (t > 1) t = 1;
+        // 插值位置
+        let x = (c1 + dx * t) * cellSize + cellSize / 2;
+        let y = (r1 + dy * t) * cellSize + cellSize / 2;
+        ctx.drawImage(
+          IMAGES[type],
+          x - cellSize * 0.4,
+          y - cellSize * 0.4,
+          cellSize * 0.8,
+          cellSize * 0.8
+        );
 
-      function animateMovePath(path, type, callback) {
-        animating = true;
-        const speed = 12; // 每帧移动的像素数，越大越快
-        let totalSteps = 0;
-        // 计算路径每段的像素距离
-        for (let i = 1; i < path.length; i++) {
-          totalSteps +=
-            Math.abs(path[i][0] - path[i - 1][0]) +
-            Math.abs(path[i][1] - path[i - 1][1]);
+        progress += speed;
+        if (progress >= cellSize * dist) {
+          progress = 0;
+          segment++;
         }
-        let current = 0;
-        let segment = 0;
-        let progress = 0;
-
-        function drawFrame() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          // Draw board except moving block
-          for (let r = 0; r < SIZE; r++) {
-            for (let c = 0; c < SIZE; c++) {
-              ctx.strokeStyle = "#333";
-              ctx.lineWidth = 1;
-              ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
-              // 不画正在移动的格子
-              if (
-                board[r][c] !== null &&
-                !(r === path[segment][0] && c === path[segment][1])
-              ) {
-                // 绘制图片
-                let img = IMAGES[board[r][c]];
-                ctx.drawImage(
-                  img,
-                  c * cellSize + cellSize * 0.1,
-                  r * cellSize + cellSize * 0.1,
-                  cellSize * 0.8,
-                  cellSize * 0.8
-                );
-              }
-            }
-          }
-          // 计算当前段的起止
-          let [r1, c1] = path[segment];
-          let [r2, c2] = path[segment + 1] || path[segment];
-          let dx = c2 - c1,
-            dy = r2 - r1;
-          let dist = Math.abs(dx) + Math.abs(dy);
-          if (dist === 0) dist = 1;
-          let t = progress / (cellSize * dist);
-          if (t > 1) t = 1;
-          // 插值位置
-          let x = (c1 + dx * t) * cellSize + cellSize / 2;
-          let y = (r1 + dy * t) * cellSize + cellSize / 2;
-          ctx.drawImage(
-            IMAGES[type],
-            x - cellSize * 0.4,
-            y - cellSize * 0.4,
-            cellSize * 0.8,
-            cellSize * 0.8
-          );
-
-          progress += speed;
-          if (progress >= cellSize * dist) {
-            progress = 0;
-            segment++;
-          }
-          if (segment < path.length - 1) {
-            requestAnimationFrame(drawFrame);
-          } else {
-            animating = false;
-            callback();
-          }
-        }
-        drawFrame();
-      }
-
-      function onCanvasClick(e) {
-        if (gameOver || animating) return;
-        let pos;
-        if (e.touches) {
-          pos = getCellFromXY(e.touches[0].clientX, e.touches[0].clientY);
+        if (segment < path.length - 1) {
+          requestAnimationFrame(drawFrame);
         } else {
-          pos = getCellFromXY(e.clientX, e.clientY);
+          animating = false;
+          callback();
         }
-        if (!pos) return;
-        const [r, c] = pos;
-        if (board[r][c] !== null) {
-          selected = [r, c];
-          render();
-        } else if (selected) {
-          if (bfsPath(selected, [r, c])) {
-            // 动画移动，按路径逐步移动
-            let from = [selected[0], selected[1]];
-            let to = [r, c];
-            let type = board[from[0]][from[1]];
-            let path = findPath(from, to);
-            board[from[0]][from[1]] = null;
-            animateMovePath(path, type, () => {
-              board[to[0]][to[1]] = type;
-              selected = null;
-              if (checkAndRemoveLines()) {
-                // 消除后不生成新方块
-              } else {
-                addRandomBlocks(3);
+      }
+      drawFrame();
+    }
+
+    function onCanvasClick(e) {
+      if (gameOver || animating) return;
+      let pos;
+      if (e.touches) {
+        pos = getCellFromXY(e.touches[0].clientX, e.touches[0].clientY);
+      } else {
+        pos = getCellFromXY(e.clientX, e.clientY);
+      }
+      if (!pos) return;
+      const [r, c] = pos;
+      if (board[r][c] !== null) {
+        selected = [r, c];
+        startBlink(); // 启动闪烁动画
+      } else if (selected) {
+        if (bfsPath(selected, [r, c])) {
+          // 动画移动，按路径逐步移动
+          let from = [selected[0], selected[1]];
+          let to = [r, c];
+          let type = board[from[0]][from[1]];
+          let path = findPath(from, to);
+          board[from[0]][from[1]] = null;
+          animateMovePath(path, type, () => {
+            board[to[0]][to[1]] = type;
+            selected = null;
+            if (checkAndRemoveLines()) {
+              // 消除后不生成新方块
+            } else {
+              addRandomBlocksAnimated(3, () => {
                 checkAndRemoveLines();
-              }
-              if (!canMoveOrEliminate()) {
-                gameOver = true;
-              }
-              render();
-            });
+                if (!canMoveOrEliminate()) gameOver = true;
+                render();
+              });
+            }
+            render();
+          });
+        }
+      }
+    }
+
+    function restart() {
+      board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+      selected = null;
+      gameOver = false;
+      score = 0; // 重置分数
+      addRandomBlocksAnimated(5);
+      render();
+    }
+
+    canvas.addEventListener("click", onCanvasClick);
+    canvas.addEventListener(
+      "touchstart",
+      function (e) {
+        onCanvasClick(e);
+        e.preventDefault();
+      },
+      { passive: false }
+    );
+    document.getElementById("restart").onclick = restart;
+
+    resizeCanvas();
+    // restart();
+
+    function addRandomBlocksAnimated(n, callback) {
+      let cells = randomEmptyCells(n);
+      let i = 0;
+
+      function showNext() {
+        if (i >= cells.length) {
+          if (callback) callback();
+          return;
+        }
+        const [r, c] = cells[i];
+        board[r][c] = Math.floor(Math.random() * BLOCK_TYPES);
+
+        let alpha = 0;
+        function fadeIn() {
+          render(); // 先正常渲染
+          // 覆盖新格子，做淡入
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          let img = IMAGES[board[r][c]];
+          ctx.drawImage(
+            img,
+            c * cellSize + cellSize * 0.1,
+            r * cellSize + cellSize * 0.1,
+            cellSize * 0.8,
+            cellSize * 0.8
+          );
+          ctx.restore();
+
+          alpha += 0.08;
+          if (alpha < 1) {
+            requestAnimationFrame(fadeIn);
+          } else {
+            i++;
+            setTimeout(showNext, 60); // 下一个格子延迟出现
           }
         }
+        fadeIn();
       }
+      showNext();
+    }
+  </script>
+</body>
 
-      function restart() {
-        board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-        selected = null;
-        gameOver = false;
-        score = 0; // 重置分数
-        addRandomBlocks(5);
-        render();
-      }
-
-      canvas.addEventListener("click", onCanvasClick);
-      canvas.addEventListener(
-        "touchstart",
-        function (e) {
-          onCanvasClick(e);
-          e.preventDefault();
-        },
-        { passive: false }
-      );
-      document.getElementById("restart").onclick = restart;
-
-      resizeCanvas();
-      restart();
-    </script>
-  </body>
 </html>
