@@ -102,14 +102,17 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
-          ctx.strokeStyle = "#bdbdbd";
+          // 斑马格背景
+          ctx.fillStyle = (r + c) % 2 === 0 ? "#CDDDDD" : "#ACBDBA";
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+
+          ctx.strokeStyle = (r + c) % 2 === 0 ? "#CDDDDD" : "#ACBDBA";
           ctx.lineWidth = 1;
           ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
           if (board[r][c] !== null) {
             let img = IMAGES[board[r][c]];
             if (selected && selected[0] === r && selected[1] === c) {
-              // 选中方块图标缩放闪烁
-              let scale = 0.85 + 0.15 * Math.sin(blinkFrame / 8); // 在0.85~1之间变化
+              let scale = 0.85 + 0.15 * Math.sin(blinkFrame / 8);
               ctx.save();
               ctx.translate(
                 c * cellSize + cellSize / 2,
@@ -125,7 +128,6 @@
               );
               ctx.restore();
             } else {
-              // 普通方块正常显示
               ctx.drawImage(
                 img,
                 c * cellSize + cellSize * 0.1,
@@ -140,7 +142,6 @@
       document.getElementById("status").textContent = gameOver
         ? "游戏结束！"
         : "";
-      // 显示分数
       let scoreDiv = document.getElementById("score");
       if (!scoreDiv) {
         scoreDiv = document.createElement("div");
@@ -332,6 +333,18 @@
     let animating = false;
     let animation = null;
 
+    function drawZebraBackground() {
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          ctx.fillStyle = (r + c) % 2 === 0 ? "#CDDDDD" : "#ACBDBA";
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          ctx.strokeStyle = (r + c) % 2 === 0 ? "#CDDDDD" : "#ACBDBA";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
     function animateMove(from, to, type, callback) {
       animating = true;
       const duration = 200; // ms
@@ -339,14 +352,11 @@
       function drawFrame(now) {
         let t = Math.min((now - startTime) / duration, 1);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Draw board except moving block
+        drawZebraBackground();
+        // 下面内容不变
         for (let r = 0; r < SIZE; r++) {
           for (let c = 0; c < SIZE; c++) {
-            ctx.strokeStyle = "#bdbdbd";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
             if (board[r][c] !== null && !(r === from[0] && c === from[1])) {
-              // 绘制图片
               let img = IMAGES[board[r][c]];
               ctx.drawImage(
                 img,
@@ -358,7 +368,6 @@
             }
           }
         }
-        // Draw moving block
         let x =
           from[1] * cellSize +
           cellSize / 2 +
@@ -374,7 +383,6 @@
           cellSize * 0.8,
           cellSize * 0.8
         );
-
         if (t < 1) {
           animation = requestAnimationFrame(drawFrame);
         } else {
@@ -388,9 +396,8 @@
 
     function animateMovePath(path, type, callback) {
       animating = true;
-      const speed = cellSize * 0.33; // 每帧移动的像素数，随 cellSize 变化
+      const speed = cellSize * 0.33;
       let totalSteps = 0;
-      // 计算路径每段的像素距离
       for (let i = 1; i < path.length; i++) {
         totalSteps +=
           Math.abs(path[i][0] - path[i - 1][0]) +
@@ -402,18 +409,13 @@
 
       function drawFrame() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Draw board except moving block
+        drawZebraBackground();
         for (let r = 0; r < SIZE; r++) {
           for (let c = 0; c < SIZE; c++) {
-            ctx.strokeStyle = "#bdbdbd";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
-            // 不画正在移动的格子
             if (
               board[r][c] !== null &&
               !(r === path[segment][0] && c === path[segment][1])
             ) {
-              // 绘制图片
               let img = IMAGES[board[r][c]];
               ctx.drawImage(
                 img,
@@ -425,7 +427,6 @@
             }
           }
         }
-        // 计算当前段的起止
         let [r1, c1] = path[segment];
         let [r2, c2] = path[segment + 1] || path[segment];
         let dx = c2 - c1,
@@ -434,7 +435,6 @@
         if (dist === 0) dist = 1;
         let t = progress / (cellSize * dist);
         if (t > 1) t = 1;
-        // 插值位置
         let x = (c1 + dx * t) * cellSize + cellSize / 2;
         let y = (r1 + dy * t) * cellSize + cellSize / 2;
         ctx.drawImage(
@@ -444,7 +444,6 @@
           cellSize * 0.8,
           cellSize * 0.8
         );
-
         progress += speed;
         if (progress >= cellSize * dist) {
           progress = 0;
@@ -543,10 +542,16 @@
 
         let alpha = 0;
         function fadeIn() {
-          render(); // 先正常渲染
-          // 覆盖新格子，做淡入
+          render();
           ctx.save();
           ctx.globalAlpha = alpha;
+          // 斑马格背景
+          ctx.fillStyle = (r + c) % 2 === 0 ? "#CDDDDD" : "#ACBDBA";
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          ctx.strokeStyle = (r + c) % 2 === 0 ? "#CDDDDD" : "#ACBDBA";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+
           let img = IMAGES[board[r][c]];
           ctx.drawImage(
             img,
@@ -562,7 +567,7 @@
             requestAnimationFrame(fadeIn);
           } else {
             i++;
-            setTimeout(showNext, 60); // 下一个格子延迟出现
+            setTimeout(showNext, 60);
           }
         }
         fadeIn();
