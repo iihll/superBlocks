@@ -60,6 +60,7 @@
     let selected = null,
       gameOver = false;
     let score = 0;
+    let highScore = Number(localStorage.getItem("superBlocksHighScore") || 0);
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     let cellSize = canvas.width / SIZE;
@@ -149,7 +150,7 @@
           .getElementById("container")
           .insertBefore(scoreDiv, document.getElementById("status"));
       }
-      scoreDiv.textContent = `分数：${score}`;
+      scoreDiv.textContent = `分数：${score}　历史最高分：${highScore}`;
     }
 
     // 启动闪烁动画
@@ -302,6 +303,7 @@
           score += 50 + (len - 5) * 10;
         }
       });
+      updateHighScore();
       return removed;
     }
 
@@ -494,6 +496,13 @@
             render();
           });
         }
+      }
+    }
+
+    function updateHighScore() {
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("superBlocksHighScore", highScore);
       }
     }
 
