@@ -388,7 +388,7 @@
 
     function animateMovePath(path, type, callback) {
       animating = true;
-      const speed = 12; // 每帧移动的像素数，越大越快
+      const speed = cellSize * 0.33; // 每帧移动的像素数，随 cellSize 变化
       let totalSteps = 0;
       // 计算路径每段的像素距离
       for (let i = 1; i < path.length; i++) {
